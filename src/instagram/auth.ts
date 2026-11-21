@@ -48,6 +48,18 @@ export async function authenticateClient(ig: IgApiClient): Promise<void> {
   // Generate device ID (deterministic based on username for consistency)
   ig.state.generateDevice(credentials.username);
 
+  // Optional: override emulated Instagram Android app version (library default is often rejected as "out of date").
+  // Set INSTAGRAM_APP_VERSION (e.g. "xxx.0.0.0.0") and INSTAGRAM_APP_VERSION_CODE (numeric build code).
+  const appVersion = process.env.INSTAGRAM_APP_VERSION;
+  const appVersionCode = process.env.INSTAGRAM_APP_VERSION_CODE;
+  if (appVersion && appVersionCode) {
+    (ig.state as any).constants = {
+      ...(ig.state as any).constants,
+      APP_VERSION: appVersion,
+      APP_VERSION_CODE: appVersionCode,
+    };
+  }
+
   // Try to restore existing session first
   if (await sessionExists()) {
     const restored = await loadSession(ig);
@@ -73,7 +85,12 @@ export async function authenticateClient(ig: IgApiClient): Promise<void> {
 
   try {
     // Simulate pre-login behavior to avoid detection
-    await ig.simulate.preLoginFlow();
+    // Non-critical: current Instagram API returns 404 on attribution endpoint, which aborts the flow.
+    try {
+      await ig.simulate.preLoginFlow();
+    } catch (simError) {
+      console.error('Pre-login simulation warning (ignored):', (simError as Error).message);
+    }
 
     // Login
     const loggedInUser = await ig.account.login(credentials.username, credentials.password);
