@@ -73,7 +73,12 @@ export async function authenticateClient(ig: IgApiClient): Promise<void> {
 
   try {
     // Simulate pre-login behavior to avoid detection
-    await ig.simulate.preLoginFlow();
+    // Non-fatal: Instagram has retired the attribution endpoint (404) that this call hits.
+    try {
+      await ig.simulate.preLoginFlow();
+    } catch (error) {
+      console.error('preLoginFlow skipped (non-fatal):', (error as Error).message);
+    }
 
     // Login
     const loggedInUser = await ig.account.login(credentials.username, credentials.password);
